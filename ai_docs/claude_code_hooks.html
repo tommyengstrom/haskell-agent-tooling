@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Claude Code Hooks Reference</title>
+</head>
+<body>
+    <h1>Claude Code Hooks Reference</h1>
+
+    <h2>Overview</h2>
+    <p>Claude Code hooks are configuration mechanisms that allow developers to customize and control tool interactions, prompt processing, and system behaviors.</p>
+
+    <h2>Configuration</h2>
+    <p>Hooks are configured in several settings files:</p>
+    <ul>
+        <li><code>~/.claude/settings.json</code> - User settings</li>
+        <li><code>.claude/settings.json</code> - Project settings</li>
+        <li><code>.claude/settings.local.json</code> - Local project settings</li>
+        <li>Enterprise managed policy settings</li>
+    </ul>
+
+    <h2>Hook Events</h2>
+    <p>Key hook events include:</p>
+    <ul>
+        <li><strong>PreToolUse</strong>: Runs before tool execution</li>
+        <li><strong>PostToolUse</strong>: Runs after tool completion</li>
+        <li><strong>Notification</strong>: Triggered during specific system notifications</li>
+        <li><strong>UserPromptSubmit</strong>: Runs when a user submits a prompt</li>
+        <li><strong>Stop</strong>: Runs when the main agent finishes responding</li>
+        <li><strong>SubagentStop</strong>: Runs when a subagent completes</li>
+        <li><strong>PreCompact</strong>: Runs before context compaction</li>
+    </ul>
+
+    <h2>Hook Structure</h2>
+    <pre><code>{
+  "hooks": {
+    "EventName": [
+      {
+        "matcher": "ToolPattern",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "shell_command_to_execute"
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+
+    <h2>Examples</h2>
+    
+    <h3>Auto-format code on file edits</h3>
+    <pre><code>{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx prettier --write ."
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+
+    <h3>Run tests after code changes</h3>
+    <pre><code>{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npm test"
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+
+    <h3>Validate prompt submissions</h3>
+    <pre><code>{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python validate_prompt.py"
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+
+    <h2>Hook Types</h2>
+    <ul>
+        <li><strong>command</strong>: Execute shell commands</li>
+        <li><strong>notification</strong>: Display system notifications</li>
+        <li><strong>block</strong>: Block tool execution based on conditions</li>
+    </ul>
+
+    <h2>Environment Variables</h2>
+    <p>Hooks have access to environment variables including:</p>
+    <ul>
+        <li><code>CLAUDE_TOOL_NAME</code>: Name of the tool being executed</li>
+        <li><code>CLAUDE_TOOL_ARGS</code>: JSON string of tool arguments</li>
+        <li><code>CLAUDE_PROJECT_DIR</code>: Current project directory</li>
+        <li><code>CLAUDE_USER_PROMPT</code>: User's submitted prompt</li>
+    </ul>
+
+    <h2>Best Practices</h2>
+    <ul>
+        <li>Use specific matchers to avoid unnecessary hook executions</li>
+        <li>Keep hook commands fast to avoid blocking Claude Code</li>
+        <li>Use project-specific settings for project-specific hooks</li>
+        <li>Test hooks thoroughly before deploying</li>
+        <li>Consider security implications of hook commands</li>
+    </ul>
+
+    <h2>Troubleshooting</h2>
+    <ul>
+        <li>Check hook syntax in settings files</li>
+        <li>Verify matcher patterns match intended tools</li>
+        <li>Ensure hook commands are executable and accessible</li>
+        <li>Review Claude Code logs for hook execution details</li>
+    </ul>
+</body>
+</html>
