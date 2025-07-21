@@ -86,6 +86,7 @@ def read_output_file(output_file : str):
 
 def find_haskell_files():
     """Find all Haskell files in the current directory tree."""
+    print("Running ghcid_feedback script...")
     haskell_files = []
     for root, dirs, files in os.walk("."):
         for file in files:
@@ -104,9 +105,13 @@ def main():
     # Check if any Haskell files are newer than the last output file
     haskell_files = find_haskell_files()
     output_file_mtime = 0
+    output_file_fresh = False
     
     if os.path.exists(output_file):
         output_file_mtime = os.path.getmtime(output_file)
+        # Check if output file was updated within the last 3 seconds (buffer for ghcid speed)
+        if script_start_time - output_file_mtime < 3:
+            output_file_fresh = True
     
     newer_haskell_files = []
     for haskell_file in haskell_files:
@@ -119,30 +124,38 @@ def main():
     if newer_haskell_files:
         print(f"Newer files: {newer_haskell_files}")
     
-    if not newer_haskell_files:
+    # If output file is fresh (updated within 3s), assume ghcid already processed changes
+    if output_file_fresh:
+        print("Output file is fresh (updated within 3s), assuming ghcid already processed changes.")
+        # Skip to reading output directly
+    elif not newer_haskell_files:
         print("No Haskell files newer than last output, exiting.")
         sys.exit(0)
-    # Check if output file was updated since script started
-    file_updated = False
-    if os.path.exists(output_file):
-        file_mtime = os.path.getmtime(output_file)
-        if file_mtime >= script_start_time:
-            file_updated = True
-    
-    # If file wasn't updated, wait for updates
-    if not file_updated:
-        if not wait_for_output_update(output_file):
-            print("Timeout waiting for ghcid output", file=sys.stderr)
-            sys.exit(0)
+    # If output file is fresh, skip waiting; otherwise check if we need to wait
+    if not output_file_fresh:
+        # Check if output file was updated since script started
+        file_updated = False
+        if os.path.exists(output_file):
+            file_mtime = os.path.getmtime(output_file)
+            if file_mtime >= script_start_time:
+                file_updated = True
+        
+        # If file wasn't updated, wait for updates
+        if not file_updated:
+            if not wait_for_output_update(output_file):
+                print("Timeout waiting for ghcid output", file=sys.stderr)
+                sys.exit(0)
     
     # Read and print the output
     output = read_output_file(output_file)
-    print(output)
     
     # Check if output indicates success
     if re.match(r"^All good.*", output):
+        print(output)
         sys.exit(0)
     else:
+        print("ghcid output:", file=sys.stderr)
+        print(output, file=sys.stderr)
         sys.exit(2)
 
 if __name__ == "__main__":

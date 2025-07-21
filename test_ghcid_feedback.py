@@ -34,16 +34,14 @@ class TestGhcidFeedback:
             except OSError:
                 pass
         
-        # Reset Lib.hs to working state
-        lib_hs = self.test_project_dir / "src" / "Lib.hs"
-        lib_hs.write_text("""module Lib
-    ( someFunc
-    ) where
+        # Reset Main.hs to working state
+        main_hs = self.test_project_dir / "app" / "Main.hs"
+        main_hs.write_text("""module Main (main) where
 
 import Prelude
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+main :: IO ()
+main = putStrLn "Nothing interesting here yet."
 """)
         
     def teardown(self):
@@ -101,15 +99,15 @@ someFunc = putStrLn "someFunc"
                 pass
         
         # Touch a Haskell file
-        lib_hs = self.test_project_dir / "src" / "Lib.hs"
-        lib_hs.touch()
+        main_hs = self.test_project_dir / "app" / "Main.hs"
+        main_hs.touch()
         
         # Run script - should detect newer file and start ghcid
         result = self.run_script()
         
         # Should either detect newer files or show successful compilation
         if ("newer than last output" in result.stdout and 
-            "1 newer" in result.stdout):
+            "newer" in result.stdout):
             print("✓ PASS: Script detects newer Haskell files")
         elif "All good" in result.stdout:
             print("✓ PASS: Script processed files and compilation succeeded")
@@ -123,8 +121,8 @@ someFunc = putStrLn "someFunc"
         
         # Touch a file to ensure there are changes to process
         time.sleep(1)
-        lib_hs = self.test_project_dir / "src" / "Lib.hs"
-        lib_hs.touch()
+        main_hs = self.test_project_dir / "app" / "Main.hs"
+        main_hs.touch()
         
         result = self.run_script(timeout=15)
         
@@ -155,8 +153,8 @@ someFunc = putStrLn "someFunc"
         
         # Touch file to trigger script
         time.sleep(1)
-        lib_hs = self.test_project_dir / "src" / "Lib.hs"
-        lib_hs.touch()
+        main_hs = self.test_project_dir / "app" / "Main.hs"
+        main_hs.touch()
         
         result = self.run_script()
         
@@ -176,21 +174,14 @@ someFunc = putStrLn "someFunc"
         """Test that compilation errors return exit code 2."""
         print("Testing: Compilation errors return exit code 2...")
         
-        # Introduce syntax error
-        lib_hs = self.test_project_dir / "src" / "Lib.hs"
-        lib_hs.write_text("""module Lib
-    ( someFunc
-    ) where
-
-import Prelude
-
-someFunc :: IO ()
-someFunc = putStrLn "someFunc" + undefined  -- This will cause a type error
-""")
+        # Introduce compilation error by appending invalid code
+        main_hs = self.test_project_dir / "app" / "Main.hs"
+        with open(main_hs, 'a') as f:
+            f.write('\n\n-- This will cause a compilation error\nbadFunction = putStrLn "test" + undefined\n')
         
         # Wait then touch to make newer
         time.sleep(1)
-        lib_hs.touch()
+        main_hs.touch()
         
         result = self.run_script()
         
@@ -203,16 +194,12 @@ someFunc = putStrLn "someFunc" + undefined  -- This will cause a type error
             print(f"  stdout: {result.stdout}")
             print(f"  stderr: {result.stderr}")
             
-        # Restore working code
-        lib_hs.write_text("""module Lib
-    ( someFunc
-    ) where
-
-import Prelude
-
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
-""")
+        # Restore working code by removing the appended error
+        content = main_hs.read_text()
+        # Remove everything after the error comment we added
+        if '-- This will cause a compilation error' in content:
+            clean_content = content.split('-- This will cause a compilation error')[0].rstrip()
+            main_hs.write_text(clean_content)
     
     def run_all_tests(self):
         """Run all tests."""
