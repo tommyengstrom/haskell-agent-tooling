@@ -84,15 +84,23 @@ def read_output_file(output_file : str):
     except IOError:
         return ""
 
-def find_haskell_files():
+def find_haskell_files() -> list[str]:
     """Find all Haskell files in the current directory tree."""
     print("Running ghcid_feedback script...")
-    haskell_files = []
-    for root, dirs, files in os.walk("."):
+    haskell_files : list[str]= []
+    for root, _dirs, files in os.walk("."):
         for file in files:
             if file.endswith((".hs", ".lhs")):
                 haskell_files.append(os.path.join(root, file))
     return haskell_files
+
+def exit(script_start_time : float, code : int):
+    if code == 0:
+        output_file = sys.stdout
+    else:
+        output_file = sys.stderr
+    print(f"ghcid hook finished in {time.time() - script_start_time:.2f} seconds", file=output_file)
+    sys.exit(code)
 
 def main():
     """Main function."""
@@ -113,7 +121,7 @@ def main():
         if script_start_time - output_file_mtime < 3:
             output_file_fresh = True
     
-    newer_haskell_files = []
+    newer_haskell_files : list[str] = []
     for haskell_file in haskell_files:
         if os.path.exists(haskell_file):
             file_mtime = os.path.getmtime(haskell_file)
@@ -130,7 +138,7 @@ def main():
         # Skip to reading output directly
     elif not newer_haskell_files:
         print("No Haskell files newer than last output, exiting.")
-        sys.exit(0)
+        exit(script_start_time, 0)
     # If output file is fresh, skip waiting; otherwise check if we need to wait
     if not output_file_fresh:
         # Check if output file was updated since script started
@@ -144,7 +152,8 @@ def main():
         if not file_updated:
             if not wait_for_output_update(output_file):
                 print("Timeout waiting for ghcid output", file=sys.stderr)
-                sys.exit(0)
+                print(f"ghcid hook timeout after {time.time() - script_start_time:.2f} seconds", file=sys.stderr)
+                exit(script_start_time, 0)
     
     # Read and print the output
     output = read_output_file(output_file)
@@ -152,11 +161,12 @@ def main():
     # Check if output indicates success
     if re.match(r"^All good.*", output):
         print(output)
-        sys.exit(0)
+        exit(script_start_time, 0)
     else:
         print("ghcid output:", file=sys.stderr)
         print(output, file=sys.stderr)
-        sys.exit(2)
+        print(f"ghcid hook finished in {time.time() - script_start_time:.2f} seconds", file=sys.stderr)
+        exit(script_start_time, 2)
 
 if __name__ == "__main__":
     main()
