@@ -152,7 +152,6 @@ def main():
         if not file_updated:
             if not wait_for_output_update(output_file):
                 print("Timeout waiting for ghcid output", file=sys.stderr)
-                print(f"ghcid hook timeout after {time.time() - script_start_time:.2f} seconds", file=sys.stderr)
                 exit(script_start_time, 0)
     
     # Read and print the output
@@ -165,7 +164,6 @@ def main():
     else:
         print("ghcid output:", file=sys.stderr)
         print(output, file=sys.stderr)
-        print(f"ghcid hook finished in {time.time() - script_start_time:.2f} seconds", file=sys.stderr)
         exit(script_start_time, 2)
 
 if __name__ == "__main__":
